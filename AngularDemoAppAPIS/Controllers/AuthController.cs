@@ -18,7 +18,6 @@ namespace AngularDemoAppAPIS.Controllers
         private readonly NpgsqlConnection _connection;
         private readonly JwtOption _options;
         private readonly IEmailService _emailService;
-        private readonly Dictionary<string, string> _otpStore = new Dictionary<string, string>(); // Temporary store for OTPs
         private readonly IMemoryCache _cache;
 
         public AuthController(NpgsqlConnection connection, IOptions<JwtOption> options, IEmailService emailService, IMemoryCache cache)
@@ -58,25 +57,27 @@ namespace AngularDemoAppAPIS.Controllers
                 }
             }
         }
-
         [HttpPost("login")]
         public IActionResult LoginUser([FromBody] LoginModel loginModel)
         {
-            using (var cmd = new NpgsqlCommand("SELECT login_user(@p_identifier, @p_password)", _connection))
+            try
             {
-                cmd.Parameters.AddWithValue("p_identifier", loginModel.Identifier!);
-                cmd.Parameters.AddWithValue("p_password", loginModel.Password!);
-
-                try
+                using (var cmd = new NpgsqlCommand("SELECT userid, username FROM login_user(@p_identifier, @p_password)", _connection))
                 {
-                    var result = cmd.ExecuteScalar();
-                    if (result != DBNull.Value && result != null)
+                    cmd.Parameters.AddWithValue("p_identifier", loginModel.Identifier!);
+                    cmd.Parameters.AddWithValue("p_password", loginModel.Password!);
+                    var reader = cmd.ExecuteReader();
+                    if (reader.Read())
                     {
-                        string foundUsername = (string)result;
+                        var userid = Convert.ToInt32(reader["userid"]);
+                        var foundUsername = Convert.ToString(reader["username"]);
+
                         var jwtkey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_options.key));
                         var credentials = new SigningCredentials(jwtkey, SecurityAlgorithms.HmacSha256);
-                        List<Claim> claims = new List<Claim>() {
-                            new Claim("username", foundUsername)
+                        var claims = new List<Claim>
+                        {
+                            new Claim("userid", userid.ToString()),
+                            new Claim("username", foundUsername!)
                         };
                         var sToken = new JwtSecurityToken(_options.key, _options.Issuer, claims: claims, expires: DateTime.Now.AddMinutes(20), signingCredentials: credentials);
                         var token = new JwtSecurityTokenHandler().WriteToken(sToken);
@@ -87,16 +88,17 @@ namespace AngularDemoAppAPIS.Controllers
                         return Unauthorized("Invalid username/email or password.");
                     }
                 }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, $"Internal server error: {ex.Message}");
-                }
-                finally
-                {
-                    _connection.Close();
-                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+            finally
+            {
+                _connection.Close();
             }
         }
+
 
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordModel model)
@@ -136,12 +138,10 @@ namespace AngularDemoAppAPIS.Controllers
         {
             try
             {
-                // Retrieve OTP from memory cache
                 if (_cache.TryGetValue(model.Email, out string storedOtp))
                 {
                     if (storedOtp == model.Otp)
                     {
-                        // Remove OTP from cache after successful verification
                         _cache.Remove(model.Email);
 
                         return Ok(new { message = "OTP verified successfully." });
@@ -196,7 +196,7 @@ namespace AngularDemoAppAPIS.Controllers
         {
             var userdata = new List<AuthenticationModel>();
 
-            using (var cmd = new NpgsqlCommand("select * from users", _connection))
+            using (var cmd = new NpgsqlCommand("select * from public.UsersData()", _connection))
             {
                 using (var reader = cmd.ExecuteReader())
                 {
