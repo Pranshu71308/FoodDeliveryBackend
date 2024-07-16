@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Npgsql;
+using Razorpay.Api;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -88,6 +89,12 @@ builder.Services.AddAuthentication(x =>
         ValidateAudience = false
     };
 });
+var razorpayOptions = configuration.GetSection("Razorpay");
+var razorpayApiKey = razorpayOptions.GetValue<string>("ApiKey");
+var razorpayApiSecret = razorpayOptions.GetValue<string>("ApiSecret");
+
+builder.Services.AddSingleton<RazorpayClient>(_ =>
+    new RazorpayClient(razorpayApiKey, razorpayApiSecret));
 var app = builder.Build();
 app.UseCors("AllowSpecificorigin");
 if (app.Environment.IsDevelopment())

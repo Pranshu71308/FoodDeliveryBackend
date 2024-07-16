@@ -8,7 +8,15 @@
         public decimal? Latitude { get; set; }
         public decimal? Longitude { get; set; }
         public float? Ratings { get; set; }
-        public byte[] Image { get; set; } // Image data as byte array
+        public byte[] Image { get; set; } 
+
+        public TimeSpan? openingTime { get; set; } 
+        public TimeSpan? closingTime { get; set; }  
+        public bool isClosed { get; set; } 
+        public DateTime? closedStartDate { get; set; } 
+        public DateTime? closedEndDate { get; set; }
+
+        public int availableSeats { get; set; }
 
     }
 }
