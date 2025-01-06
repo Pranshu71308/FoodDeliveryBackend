@@ -58,7 +58,7 @@ namespace AngularDemoAppAPIS.Controllers
                 }
             }
         }
-        [HttpPost("login")]
+        [HttpPost("login1")]
         public IActionResult LoginUser([FromBody] LoginModel loginModel)
         {
             try
