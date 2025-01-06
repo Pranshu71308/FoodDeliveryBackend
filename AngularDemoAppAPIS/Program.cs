@@ -97,7 +97,7 @@ builder.Services.AddSingleton<RazorpayClient>(_ =>
     new RazorpayClient(razorpayApiKey, razorpayApiSecret));
 var app = builder.Build();
 app.UseCors("AllowSpecificorigin");
-if (app.Environment.IsDevelopment())
+if (true)
 {
     app.UseSwagger();
     app.UseSwaggerUI();
